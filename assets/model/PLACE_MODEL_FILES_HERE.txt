@@ -1,0 +1,10 @@
+Drop these three files here after running the training pipeline
+(pupcheck_training/, see its README step 6):
+
+  pupcheck_model.tflite
+  class_names.json
+  cam_weights.json
+
+Until they're here, the app's on-device prediction step will fail
+gracefully and fall back to the backend's server-side (mock) prediction —
+see lib/services/on_device_predictor.dart.
