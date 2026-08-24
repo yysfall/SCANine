@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -15,7 +17,14 @@ class AnalyzeScreen extends StatefulWidget {
 
 class _AnalyzeScreenState extends State<AnalyzeScreen> {
   final Set<String> _selectedSymptoms = {};
-  bool _uploading = false;
+
+  Uint8List? _pickedBytes;
+  String? _pickedFilename;
+  String? _pickedMimeType;
+  String? _pickedSourceLabel; // "Camera" or "Gallery", shown on the preview
+
+  bool _picking = false; // true only while the OS camera/gallery picker is open
+  bool _analyzing = false; // true only while Continue to Scan is running
 
   static const _symptoms = [
     'Itching',
@@ -39,24 +48,47 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     });
   }
 
-  void _openScan() {
-    // Symptoms travel with us so the Scan screen can send them along
-    // once a photo is captured there.
-    Navigator.pushNamed(context, '/scan', arguments: _selectedSymptoms.toList());
+  Future<void> _pick(ImageSource source) async {
+    final picker = ImagePicker();
+    setState(() => _picking = true);
+    try {
+      final picked = await picker.pickImage(source: source, imageQuality: 85);
+      if (picked == null) return; // user cancelled — leave any existing photo as-is
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _pickedBytes = bytes;
+        _pickedFilename = picked.name;
+        _pickedMimeType = picked.mimeType;
+        _pickedSourceLabel = source == ImageSource.camera ? 'Camera' : 'Gallery';
+      });
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
   }
 
-  Future<void> _uploadFromGallery() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null) return; // user cancelled
+  void _clearPhoto() {
+    setState(() {
+      _pickedBytes = null;
+      _pickedFilename = null;
+      _pickedMimeType = null;
+      _pickedSourceLabel = null;
+    });
+  }
 
-    setState(() => _uploading = true);
+  Future<void> _continueToScan() async {
+    if (_pickedBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Take or upload a photo first.')),
+      );
+      return;
+    }
+
+    setState(() => _analyzing = true);
     try {
-      final bytes = await picked.readAsBytes();
       final args = await submitScan(
-        imageBytes: bytes,
-        filename: picked.name,
-        mimeType: picked.mimeType,
+        imageBytes: _pickedBytes!,
+        filename: _pickedFilename!,
+        mimeType: _pickedMimeType,
         symptoms: _selectedSymptoms.toList(),
       );
       if (!mounted) return;
@@ -66,14 +98,16 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Analysis failed: $e')));
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) setState(() => _analyzing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final busy = _picking || _analyzing;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -113,23 +147,33 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     Text('GET AN IMAGE', style: AppText.eyebrow(color: AppColors.accent)),
                     const SizedBox(height: 10),
 
+                    if (_pickedBytes != null) ...[
+                      _PhotoPreview(
+                        bytes: _pickedBytes!,
+                        sourceLabel: _pickedSourceLabel ?? '',
+                        onRemove: busy ? null : _clearPhoto,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     _OptionCard(
                       icon: Icons.camera_alt_rounded,
                       iconBg: AppColors.accentSoft,
                       iconColor: AppColors.accent,
-                      title: 'Scan with Camera',
-                      subtitle: 'Live guided scan, best for close-up detail',
-                      onTap: _uploading ? null : _openScan,
+                      title: _pickedBytes != null ? 'Retake Photo' : 'Scan with Camera',
+                      subtitle: 'Take a close-up photo of the affected area',
+                      onTap: busy ? null : () => _pick(ImageSource.camera),
+                      loading: _picking,
                     ),
                     const SizedBox(height: 12),
                     _OptionCard(
                       icon: Icons.image_rounded,
                       iconBg: AppColors.successSoft,
                       iconColor: AppColors.success,
-                      title: 'Upload a Photo',
+                      title: _pickedBytes != null ? 'Choose Different Photo' : 'Upload a Photo',
                       subtitle: 'Choose an existing image from your gallery',
-                      onTap: _uploading ? null : _uploadFromGallery,
-                      loading: _uploading,
+                      onTap: busy ? null : () => _pick(ImageSource.gallery),
+                      loading: _picking,
                     ),
 
                     const SizedBox(height: 24),
@@ -146,7 +190,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                       children: _symptoms.map((s) => _SymptomChip(
                             label: s,
                             selected: _selectedSymptoms.contains(s),
-                            onTap: () => _toggle(s),
+                            onTap: busy ? () {} : () => _toggle(s),
                           )).toList(),
                     ),
 
@@ -154,8 +198,14 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _uploading ? null : _openScan,
-                        child: const Text('Continue to Scan'),
+                        onPressed: (busy || _pickedBytes == null) ? null : _continueToScan,
+                        child: _analyzing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Continue to Scan'),
                       ),
                     ),
                   ],
@@ -165,6 +215,53 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             const PupCheckBottomNav(current: 'analyze'),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PhotoPreview extends StatelessWidget {
+  final Uint8List bytes;
+  final String sourceLabel;
+  final VoidCallback? onRemove;
+
+  const _PhotoPreview({required this.bytes, required this.sourceLabel, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.accent, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(bytes, width: 56, height: 56, fit: BoxFit.cover),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Photo ready', style: AppText.body(size: 13.5, w: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text('From $sourceLabel · tap an option below to replace', style: AppText.muted(size: 11)),
+              ],
+            ),
+          ),
+          if (onRemove != null)
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(Icons.close, size: 18),
+              color: AppColors.inkSoft,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              padding: EdgeInsets.zero,
+            ),
+        ],
       ),
     );
   }
@@ -254,7 +351,7 @@ class _SymptomChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: selected ? const Color(0xFF0C2649) : AppColors.ink,
+            color: selected ? AppColors.accent : AppColors.ink,
           ),
         ),
       ),

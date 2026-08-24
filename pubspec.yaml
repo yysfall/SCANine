@@ -21,13 +21,21 @@ dependencies:
   google_maps_flutter: ^2.9.0
   geolocator: ^13.0.1
   url_launcher: ^6.3.1
+  camera: ^0.11.1+2
+  app_links: ^6.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
     - assets/model/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"

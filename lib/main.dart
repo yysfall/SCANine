@@ -12,7 +12,7 @@ import 'screens/history_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/vets_screen.dart';
 import 'screens/vet_details_screen.dart';
-
+import 'screens/reset_password_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
@@ -43,6 +43,7 @@ class PupCheckApp extends StatelessWidget {
         '/profile': (context) => const ProfileScreen(),
         '/vets': (context) => const VetsScreen(),
         '/vet-details': (context) => const VetDetailsScreen(),
+        '/reset-password': (context) => const ResetPasswordScreen(),
       },
     );
   }

@@ -45,6 +45,53 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+  final email = _emailCtrl.text.trim();
+
+  if (email.isEmpty) {
+    setState(() {
+      _error = 'Please enter your email address first.';
+    });
+    return;
+  }
+
+  setState(() {
+    _loading = true;
+    _error = null;
+  });
+
+  try {
+    await Supabase.instance.client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'scanine://reset-password',
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Password reset email sent. Please check your inbox.',
+        ),
+      ),
+    );
+  } on AuthException catch (e) {
+    setState(() {
+      _error = e.message;
+    });
+  } catch (e) {
+    setState(() {
+      _error = 'Something went wrong. Please try again.';
+    });
+  } finally {
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,8 +151,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {},
-                      child: Text('Forgot password?', style: AppText.body(size: 12, w: FontWeight.w700, color: AppColors.primary)),
+                      onPressed: _loading ? null : _forgotPassword,
+                      child: Text(
+                        'Forgot password?',
+                        style: AppText.body(
+                          size: 12,
+                          w: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   ),
                   if (_error != null) ...[

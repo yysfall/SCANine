@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/results_screen_args.dart';
 import '../models/scan_result.dart';
 import '../theme/app_theme.dart';
+import '../widgets/fullscreen_image_viewer.dart';
 
 class ResultsScreen extends StatelessWidget {
   const ResultsScreen({super.key});
@@ -15,7 +16,7 @@ class ResultsScreen extends StatelessWidget {
     // Demo fallback so this screen still looks right when reached from a
     // tab/tap that isn't wired to a live scan yet (e.g. Home's hardcoded
     // "recent scan" preview card).
-    final title = real?.locationLabel ?? 'Left hind leg';
+    final title = real?.locationLabel ?? 'Scan Results';
     final condition = real?.predictedCondition ?? 'Acute Moist Dermatitis';
     final confidence = real?.confidence ?? 0.78;
     final description = real?.description ??
@@ -36,7 +37,13 @@ class ResultsScreen extends StatelessWidget {
           Stack(
             children: [
               if (camOverlay != null)
-                Image.memory(camOverlay, height: 220, width: double.infinity, fit: BoxFit.cover)
+                GestureDetector(
+                  onTap: () => showFullscreenImage(context, camOverlay, heroTag: 'gradcam-image'),
+                  child: Hero(
+                    tag: 'gradcam-image',
+                    child: Image.memory(camOverlay, height: 220, width: double.infinity, fit: BoxFit.cover),
+                  ),
+                )
               else if (real != null)
                 Image.network(
                   real.imageUrl,
@@ -84,6 +91,20 @@ class ResultsScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              if (camOverlay != null)
+                Positioned(
+                  top: 48,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: () => showFullscreenImage(context, camOverlay, heroTag: 'gradcam-image'),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.85), shape: BoxShape.circle),
+                      child: const Icon(Icons.fullscreen, size: 20, color: AppColors.ink),
+                    ),
+                  ),
+                ),
             ],
           ),
           Expanded(
