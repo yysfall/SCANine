@@ -30,6 +30,13 @@ class ResultsScreen extends StatelessWidget {
     final rednessScore = real?.rednessScore ?? 62;
     final textureSeverityScore = real?.textureSeverityScore ?? 38;
 
+    // Hide skin-specific analysis for invalid/non-skin images.
+    final conditionNormalized = condition.trim().toLowerCase();
+
+    final isInvalidSkinPhoto =
+        conditionNormalized == 'not_applicable' ||
+        conditionNormalized == 'not a valid skin photo';
+
     return Scaffold(
       body: Column(
         children: [
@@ -131,36 +138,41 @@ class ResultsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
 
-                  _card(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Image analysis', style: AppText.body(size: 13, w: FontWeight.w700)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Measured directly from the photo, independent of the condition prediction above.',
-                          style: AppText.muted(size: 11),
-                        ),
-                        const SizedBox(height: 12),
-                        _metricRow(
-                          'Redness (inflammation)',
-                          rednessScore,
-                          AppColors.alert,
-                          detectedText: 'Redness detected',
-                          notDetectedText: 'No significant redness detected',
-                        ),
-                        const SizedBox(height: 14),
-                        _metricRow(
-                          'Texture severity (crusting)',
-                          textureSeverityScore,
-                          AppColors.accent,
-                          detectedText: 'Texture and roughness detected',
-                          notDetectedText: 'No significant texture or roughness detected',
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
+                  if (!isInvalidSkinPhoto) ...[
+  _card(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Image analysis',
+          style: AppText.body(size: 13, w: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Measured directly from the photo, independent of the condition prediction above.',
+          style: AppText.muted(size: 11),
+        ),
+        const SizedBox(height: 12),
+        _metricRow(
+          'Redness (inflammation)',
+          rednessScore,
+          AppColors.alert,
+          detectedText: 'Redness detected',
+          notDetectedText: 'No significant redness detected',
+        ),
+        const SizedBox(height: 14),
+        _metricRow(
+          'Texture severity (crusting)',
+          textureSeverityScore,
+          AppColors.accent,
+          detectedText: 'Texture and roughness detected',
+          notDetectedText: 'No significant texture or roughness detected',
+        ),
+      ],
+    ),
+  ),
+  const SizedBox(height: 14),
+],
 
                   if (camOverlay != null) ...[
                     _card(
@@ -180,7 +192,7 @@ class ResultsScreen extends StatelessWidget {
                     const SizedBox(height: 14),
                   ],
 
-                  if (differentials.isNotEmpty) ...[
+                  if (!isInvalidSkinPhoto && differentials.isNotEmpty) ...[
                     _card(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,7 +217,7 @@ class ResultsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 18),
-
+                if (!isInvalidSkinPhoto) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -214,6 +226,7 @@ class ResultsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
+                ],
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(

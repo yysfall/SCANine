@@ -66,8 +66,14 @@ const Map<String, ConditionInfo> kConditionInfo = {
         'Common triggers include fleas, food, or environmental allergens. '
         'Avoid suspected triggers, prevent excessive scratching, and consult a veterinarian.',
   ),
+  'not_applicable': ConditionInfo(
+    displayName: 'Not a Valid Skin Photo',
+    severity: 'mild',
+    description: "This doesn't look like a close-up photo of your dog's skin. Try retaking the "
+        'photo, centered on the affected area, with good lighting.',
+  ),
 };
 
 ConditionInfo conditionInfoFor(String classKey) =>
     kConditionInfo[classKey] ??
-    const ConditionInfo(displayName: 'Unknown', severity: 'moderate', description: 'Unrecognized condition.');
+    const ConditionInfo(displayName: 'Not a Valid Skin Photo', severity: 'moderate', description: 'Unrecognized condition.');

@@ -135,39 +135,60 @@ class ApiClient {
     return ScanResult.fromJson(_decode(response.body));
   }
 
-  /// Returns null if the user hasn't saved a dog profile yet (backend 404),
-  /// rather than throwing — that's an expected first-run state, not an error.
-  Future<Dog?> getMyDog() async {
-    final uri = Uri.parse('$_baseUrl/dogs/me');
+  Future<List<Dog>> getDogs() async {
+    final uri = Uri.parse('$_baseUrl/dogs');
     final response = await http.get(uri, headers: _authHeaders());
 
-    if (response.statusCode == 404) return null;
     if (response.statusCode != 200) {
-      throw ApiException('Fetching dog profile failed (${response.statusCode}): ${response.body}');
+      throw ApiException('Fetching dogs failed (${response.statusCode}): ${response.body}');
     }
-    return Dog.fromJson(_decode(response.body));
+    return _decodeList(response.body).map((e) => Dog.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<Dog> upsertMyDog({
+  Future<Dog> createDog({
     required String name,
     String? breed,
     double? ageYears,
   }) async {
-    final uri = Uri.parse('$_baseUrl/dogs/me');
+    final uri = Uri.parse('$_baseUrl/dogs');
+    final response = await http.post(
+      uri,
+      headers: {..._authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'name': name, 'breed': breed, 'age_years': ageYears}),
+    );
+
+    if (response.statusCode != 201) {
+      throw ApiException('Creating dog failed (${response.statusCode}): ${response.body}');
+    }
+    return Dog.fromJson(_decode(response.body));
+  }
+
+  Future<Dog> updateDog(
+    String dogId, {
+    required String name,
+    String? breed,
+    double? ageYears,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/dogs/$dogId');
     final response = await http.put(
       uri,
       headers: {..._authHeaders(), 'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'breed': breed,
-        'age_years': ageYears,
-      }),
+      body: jsonEncode({'name': name, 'breed': breed, 'age_years': ageYears}),
     );
 
     if (response.statusCode != 200) {
-      throw ApiException('Saving dog profile failed (${response.statusCode}): ${response.body}');
+      throw ApiException('Saving dog failed (${response.statusCode}): ${response.body}');
     }
     return Dog.fromJson(_decode(response.body));
+  }
+
+  Future<void> deleteDog(String dogId) async {
+    final uri = Uri.parse('$_baseUrl/dogs/$dogId');
+    final response = await http.delete(uri, headers: _authHeaders());
+
+    if (response.statusCode != 204) {
+      throw ApiException('Deleting dog failed (${response.statusCode}): ${response.body}');
+    }
   }
 
   /// No auth header — /vets/* isn't user-specific data.

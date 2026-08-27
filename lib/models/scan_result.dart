@@ -53,7 +53,7 @@ class ScanResult {
             .toList(),
         rednessScore: (json['redness_score'] as num?)?.toDouble(),
         textureSeverityScore: (json['texture_severity_score'] as num?)?.toDouble(),
-        createdAt: DateTime.parse(json['created_at'] as String),
+        createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       );
 }
 
@@ -80,6 +80,6 @@ class ScanListItem {
         locationLabel: json['location_label'] as String?,
         predictedCondition: json['predicted_condition'] as String,
         severity: json['severity'] as String,
-        createdAt: DateTime.parse(json['created_at'] as String),
+        createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       );
 }

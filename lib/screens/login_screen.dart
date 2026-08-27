@@ -132,7 +132,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(hintText: 'you@email.com'),
+                    decoration: InputDecoration(hintText: 'Type your email',
+                    hintStyle: AppText.body(
+                    size: 13,
+                    w: FontWeight.w400,
+                    color: AppColors.inkSoft,
+                  ),
+                  ),
                   ),
                   const SizedBox(height: 14),
                   Text('Password', style: AppText.body(size: 12, w: FontWeight.w600, color: AppColors.inkSoft)),
@@ -141,7 +147,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _passCtrl,
                     obscureText: _obscure,
                     decoration: InputDecoration(
-                      hintText: '••••••••',
+                      hintText: 'Type your password',
+                      hintStyle: AppText.body(
+                        size: 13,
+                        w: FontWeight.w400,
+                        color: AppColors.inkSoft
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(_obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
                         onPressed: () => setState(() => _obscure = !_obscure),

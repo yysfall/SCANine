@@ -30,6 +30,12 @@ class OnDevicePredictor {
   static const _classNamesAsset = 'assets/model/class_names.json';
   static const _camWeightsAsset = 'assets/model/cam_weights.json';
   static const _inputSize = 224;
+  // Separate from _inputSize on purpose: 224x224 is a forced square,
+  // required by the model, but a bad size to actually SHOW to the person
+  // — it distorts non-square photos and looks blurry once stretched
+  // across a phone-width display. The CAM overlay is built on a much
+  // larger, aspect-ratio-preserving copy instead — see predict() below.
+  static const _displayMaxDimension = 1024;
 
   Interpreter? _interpreter;
   List<String>? _classNames;
@@ -62,10 +68,11 @@ class OnDevicePredictor {
   }
 
   /// Runs inference on an already-decoded [image] and returns the
-  /// predicted class plus a CAM heatmap overlaid on the (resized) photo.
-  /// Takes a decoded image rather than raw bytes so callers that also need
-  /// the decoded image for other purposes (e.g. ImageMetricsService) only
-  /// decode once.
+  /// predicted class plus a CAM heatmap overlaid on a full-resolution,
+  /// aspect-correct copy of the photo (not the 224x224 square used
+  /// internally for model input). Takes a decoded image rather than raw
+  /// bytes so callers that also need the decoded image for other purposes
+  /// (e.g. ImageMetricsService) only decode once.
   Future<OnDevicePrediction> predict(img.Image decoded) async {
     await _ensureLoaded();
     final interpreter = _interpreter!;
@@ -125,8 +132,14 @@ class OnDevicePredictor {
     final fmRaw = outputs[featureMapIdx] as List;
     final featureMaps = fmRaw[0] as List; // [gridH][gridW][channels]
 
+    // Built from the ORIGINAL decoded photo, not the 224x224 square used
+    // for model input — preserves aspect ratio and gives the heatmap a
+    // real resolution to render at, instead of stretching a tiny image
+    // up to fill the screen.
+    final displayImage = _resizeForDisplay(decoded, _displayMaxDimension);
+
     final overlayPng = _renderCamOverlay(
-      resizedOriginal: resized,
+      displayImage: displayImage,
       featureMaps: featureMaps,
       classWeights: camWeights.map((row) => row[predictedIndex]).toList(),
     );
@@ -141,9 +154,11 @@ class OnDevicePredictor {
   }
 
   /// Computes CAM = ReLU(Σ_channel weight_c * featureMap_c), normalizes
-  /// it, renders it as a heatmap, and composites it over the input photo.
+  /// it, renders it as a heatmap, and composites it over [displayImage]
+  /// — a full-resolution, aspect-correct copy of the photo, NOT the
+  /// distorted 224x224 square fed to the model.
   Uint8List _renderCamOverlay({
-    required img.Image resizedOriginal,
+    required img.Image displayImage,
     required List featureMaps, // [gridH][gridW][channels]
     required List<double> classWeights, // [channels], already selected for the predicted class
   }) {
@@ -187,12 +202,12 @@ class OnDevicePredictor {
     }
     final heatResized = img.copyResize(
       heatSmall,
-      width: resizedOriginal.width,
-      height: resizedOriginal.height,
+      width: displayImage.width,
+      height: displayImage.height,
       interpolation: img.Interpolation.cubic,
     );
 
-    final overlay = img.Image.from(resizedOriginal);
+    final overlay = img.Image.from(displayImage);
     img.compositeImage(overlay, heatResized);
 
     return Uint8List.fromList(img.encodePng(overlay));
@@ -216,6 +231,19 @@ class OnDevicePredictor {
         (40 - local * 40).round(),
       );
     }
+  }
+
+  /// Resizes preserving aspect ratio, capping the longer side at
+  /// [maxDimension] — unlike the model's forced-square resize, this
+  /// never distorts the photo. Leaves already-small images untouched
+  /// rather than upscaling them (upscaling would just blur further).
+  img.Image _resizeForDisplay(img.Image source, int maxDimension) {
+    if (source.width <= maxDimension && source.height <= maxDimension) {
+      return source;
+    }
+    return source.width >= source.height
+        ? img.copyResize(source, width: maxDimension)
+        : img.copyResize(source, height: maxDimension);
   }
 
   dynamic _nestedZeros(List<int> shape) {
