@@ -10,7 +10,7 @@ The application is intended for preliminary support only and does not replace pr
 
 ## Features
 
-- **AI Skin Disease Detection** – Classifies dog skin images using MobileNetV3-Large.
+- **AI Skin Disease Detection** – Classifies dog skin images using MobileNetV3.
 - **Image Upload and Capture** – Allows users to select or capture images for analysis.
 - **Confidence Scores** – Displays the model's confidence for its predictions.
 - **Explainable AI** – Generates CAM/Grad-CAM-style heatmaps highlighting image regions contributing to the prediction.
