@@ -80,6 +80,9 @@ flutter run
 
 Ensure the backend URL and API configuration match your environment before testing features that require them.
 
+**Backend Repository Link:** https://github.com/yysfall/SCANine_backend
+**Backend API Link(RENDER):** https://scanine-backend.onrender.com/docs
+
 ## Disclaimer
 
 SCANine is an academic research project. Its predictions are not confirmed diagnoses and should not be used as the sole basis for treatment decisions. Consult a licensed veterinarian for professional assessment and treatment.
